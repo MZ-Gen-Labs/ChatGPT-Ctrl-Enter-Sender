@@ -299,44 +299,93 @@ const SITE_BEHAVIORS = {
       }
     },
   },
+
+  "x.com": {
+    shouldHandle(event) {
+      const url = window.location.href;
+      if (!url.includes("x.com/i/grok")) return false;
+
+      const target = event.target;
+      const isEditable = target.getAttribute("contenteditable") === "true" || 
+                         target.closest('[contenteditable="true"]') !== null;
+      const isTextbox = target.getAttribute("role") === "textbox" || 
+                        target.closest('[role="textbox"]') !== null;
+      const isTextarea = target.tagName === "TEXTAREA";
+
+      return isEditable || isTextbox || isTextarea;
+    },
+    onEnter(event) {
+      // 1. 【通常のEnter（単体）が押された場合】 ──> 改行に強制変更
+      if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Grok側の送信処理が1ミリ秒も動かないように、イベントをその場で「完全消滅」させます
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        // 完全にイベントを止めた上で、エディタに物理的に改行（BR）をねじ込みます
+        const activeInput = event.target.closest('[contenteditable="true"]') || event.target;
+        if (activeInput.tagName === "TEXTAREA") {
+          insertTextareaNewline(activeInput);
+        } else {
+          const selection = window.getSelection();
+          if (selection.rangeCount) {
+            const range = selection.getRangeAt(0);
+            const br = document.createElement("br");
+            range.deleteContents();
+            range.insertNode(br);
+            
+            range.setStartAfter(br);
+            range.setEndAfter(br);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            // 入力内容が変わったことをGrok側に通知
+            activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        }
+        return;
+      }
+
+      // 2. 【Shift+Enter が押された場合】 ──> 送信ボタンを強制クリック
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Grok本来 of 「Shift+Enter＝改行」という動きをここで完全にストップします
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        // 画面上の送信ボタンを確実に特定してクリックします
+        const submitButton = document.querySelector(
+          'button[data-testid="grok_send_button"], ' +
+          'button[aria-label*="送信"], button[aria-label*="Send"], ' +
+          'form button[type="submit"], ' +
+          'div[contenteditable="true"] ~ button, ' +
+          '[role="textbox"] ~ button, ' +
+          'button:has(svg)'
+        );
+
+        if (submitButton) {
+          submitButton.click();
+        }
+        return;
+      }
+
+      // 3. 【Ctrl+Enter などの場合】 ──> そのまま送信処理へ流す
+      if (event.ctrlKey || event.metaKey) {
+        // 拡張機能は何もせず、Grokの元々の送信処理に任せます
+        return;
+      }
+    },
+    onCtrlEnter(event) {
+      return;
+    }
+  },
 };
-
-// ── X(Grok) 専用の個別の処理ロジック ─────────────────────────
-function handleXGrok(event) {
-  // 現在のURLが x.com/i/grok かどうかを厳密にチェック
-  if (!window.location.href.includes("x.com/i/grok")) {
-    return false; // 通常のTwitterタイムライン等なら何もせずスルー
-  }
-
-  // フォーカスが当たっている要素が contenteditable かチェック
-  const isGrokInput = event.target && event.target.getAttribute("contenteditable") === "true";
-  if (!isGrokInput) return false;
-
-  const isOnlyEnter = !event.ctrlKey && !event.metaKey && !event.shiftKey;
-  const isShiftEnter = event.shiftKey && !event.ctrlKey && !event.metaKey;
-
-  // 通常の Enter の場合 ➔ Shiftキーが押されている（＝改行）と嘘をつく
-  if (isOnlyEnter) {
-    event.stopImmediatePropagation();
-    Object.defineProperty(event, 'shiftKey', { get: () => true });
-  } 
-  // Shift + Enter の場合 ➔ Shiftキーは押されていない（＝送信）と嘘をつく
-  else if (isShiftEnter) {
-    event.stopImmediatePropagation();
-    Object.defineProperty(event, 'shiftKey', { get: () => false });
-  }
-
-  return true; // X(Grok)としての処理を完了したため、以降の共通ロジックをスキップ
-}
 
 // ── Unified handler ──────────────────────────────────────────────────────────
 
 function handleCtrlEnter(event) {
   if (event.isComposing || !event.isTrusted) return;
   if (!isEnterKey(event)) return;
-
-  // 最優先でX(Grok)の判定を行い、該当すればここで終了させる
-  if (handleXGrok(event)) return;
 
   const hostname = window.location.hostname;
   const behavior = SITE_BEHAVIORS[hostname];
