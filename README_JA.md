@@ -39,6 +39,7 @@
 * <https://poe.com>
 * <https://v0.app>
 * <https://cursor.com/agents>
+* <https://x.com/i/grok>
 
 ## デモ動画
 

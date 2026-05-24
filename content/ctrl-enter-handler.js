@@ -301,11 +301,42 @@ const SITE_BEHAVIORS = {
   },
 };
 
+// ── X(Grok) 専用の個別の処理ロジック ─────────────────────────
+function handleXGrok(event) {
+  // 現在のURLが x.com/i/grok かどうかを厳密にチェック
+  if (!window.location.href.includes("x.com/i/grok")) {
+    return false; // 通常のTwitterタイムライン等なら何もせずスルー
+  }
+
+  // フォーカスが当たっている要素が contenteditable かチェック
+  const isGrokInput = event.target && event.target.getAttribute("contenteditable") === "true";
+  if (!isGrokInput) return false;
+
+  const isOnlyEnter = !event.ctrlKey && !event.metaKey && !event.shiftKey;
+  const isShiftEnter = event.shiftKey && !event.ctrlKey && !event.metaKey;
+
+  // 通常の Enter の場合 ➔ Shiftキーが押されている（＝改行）と嘘をつく
+  if (isOnlyEnter) {
+    event.stopImmediatePropagation();
+    Object.defineProperty(event, 'shiftKey', { get: () => true });
+  } 
+  // Shift + Enter の場合 ➔ Shiftキーは押されていない（＝送信）と嘘をつく
+  else if (isShiftEnter) {
+    event.stopImmediatePropagation();
+    Object.defineProperty(event, 'shiftKey', { get: () => false });
+  }
+
+  return true; // X(Grok)としての処理を完了したため、以降の共通ロジックをスキップ
+}
+
 // ── Unified handler ──────────────────────────────────────────────────────────
 
 function handleCtrlEnter(event) {
   if (event.isComposing || !event.isTrusted) return;
   if (!isEnterKey(event)) return;
+
+  // 最優先でX(Grok)の判定を行い、該当すればここで終了させる
+  if (handleXGrok(event)) return;
 
   const hostname = window.location.hostname;
   const behavior = SITE_BEHAVIORS[hostname];
