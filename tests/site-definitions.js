@@ -52,6 +52,14 @@ const SITES = [
     notes: "認証不要で一部機能使える可能性",
   },
   {
+    name: "X Grok",
+    url: "https://x.com/i/grok",
+    inputSelector: "textarea, div[contenteditable='true']",
+    inputType: "textarea",
+    requiresAuth: true,
+    notes: "Enter→改行, Ctrl+Enter→送信",
+  },
+  {
     name: "Perplexity",
     url: "https://www.perplexity.ai/",
     inputSelector: 'div[contenteditable="true"]#ask-input',

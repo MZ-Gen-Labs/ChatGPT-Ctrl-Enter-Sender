@@ -32,6 +32,7 @@ You can use this extension on the following pages:
 * <https://m365.cloud.microsoft/chat>
 * <https://chat.deepseek.com>
 * <https://grok.com>
+* <https://x.com/i/grok>
 * <https://www.perplexity.ai>
 * <https://chat.mistral.ai>
 * <https://notebooklm.google.com>

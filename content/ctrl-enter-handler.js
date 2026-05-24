@@ -172,6 +172,113 @@ const SITE_BEHAVIORS = {
     },
   },
 
+  "x.com": {
+    shouldHandle(event) {
+      const url = window.location.href;
+      if (!url.includes("x.com/i/grok")) return false;
+
+      const target = event.target;
+
+      // 1. contenteditable on target or any ancestor
+      const isEditable = target.getAttribute("contenteditable") === "true" ||
+                         target.closest('[contenteditable="true"]') !== null;
+
+      // 2. role=textbox on target or any ancestor
+      const isTextbox = target.getAttribute("role") === "textbox" ||
+                        target.closest('[role="textbox"]') !== null;
+
+      // 3. Lexical / Draft.js editor class or attribute on target or ancestor
+      const hasEditorClass = target.classList.contains("public-DraftEditor-content") ||
+                             target.closest(".public-DraftEditor-content") !== null ||
+                             target.closest('[data-lexical-editor="true"]') !== null;
+
+      // 4. Plain TEXTAREA
+      const isTextarea = target.tagName === "TEXTAREA";
+
+      return isEditable || isTextbox || hasEditorClass || isTextarea;
+    },
+    onEnter(event) {
+      // ── a. Shift+Enter → Submit ───────────────────────────────────────────
+      // (Shift+Enter also routes through onEnter because the unified handler
+      //  routes any non-Ctrl/Meta Enter to onEnter regardless of shiftKey)
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        // Stage 1: find and click the visible send button
+        // Try progressively broader selectors to handle Grok UI changes
+        const submitButton =
+          document.querySelector('button[data-testid="grok_send_button"]') ||
+          document.querySelector('button[aria-label*="Send"]') ||
+          document.querySelector('button[aria-label*="送信"]') ||
+          document.querySelector('button[aria-label*="grok"]') ||
+          document.querySelector('form button[type="submit"]:not([disabled])') ||
+          // Last resort: any enabled button containing an SVG near the editor
+          [...document.querySelectorAll('button:not([disabled])')]
+            .find(btn => btn.querySelector('svg') &&
+                         btn.closest('form, [role="main"]'));
+
+        if (submitButton && !submitButton.disabled) {
+          submitButton.click();
+          return;
+        }
+
+        // Stage 2: dispatch a new KeyboardEvent with shiftKey:false
+        // The extension's own listener ignores isTrusted:false events,
+        // so this reaches Grok's keydown handler directly.
+        event.target.dispatchEvent(new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          shiftKey: false,
+          ctrlKey: false,
+          metaKey: false,
+        }));
+        return;
+      }
+
+      // ── b. Ctrl/Cmd+Enter → pass through (Grok's native submit) ──────────
+      if (event.ctrlKey || event.metaKey) {
+        return;
+      }
+
+      // ── c. Plain Enter → Newline ──────────────────────────────────────────
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      // Resolve the actual editable element (may be an ancestor of event.target)
+      const activeInput = event.target.closest('[contenteditable="true"]') || event.target;
+
+      if (activeInput.tagName === "TEXTAREA") {
+        insertTextareaNewline(activeInput);
+      } else {
+        // contenteditable: insert <br> at cursor position
+        const selection = window.getSelection();
+        if (selection.rangeCount) {
+          const range = selection.getRangeAt(0);
+          const br = document.createElement("br");
+          range.deleteContents();
+          range.insertNode(br);
+          range.setStartAfter(br);
+          range.setEndAfter(br);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          // Notify Grok's JS that the content changed
+          activeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    },
+    onCtrlEnter(event) {
+      // Ctrl/Cmd+Enter: pass through so Grok's native Enter-to-submit fires
+      return;
+    },
+  },
+
   "www.perplexity.ai": {
     shouldHandle(event) {
       return event.target.tagName === "DIV" && event.target.contentEditable === "true";

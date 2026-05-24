@@ -15,6 +15,7 @@ export const SITE_CONFIGS = [
   { hostname: "m365.cloud.microsoft", matchPatterns: ["https://m365.cloud.microsoft/*"] },
   { hostname: "chat.deepseek.com", matchPatterns: ["https://chat.deepseek.com/*"] },
   { hostname: "grok.com", matchPatterns: ["https://grok.com/*"] },
+  { hostname: "x.com", matchPatterns: ["https://x.com/i/grok*"] },
   { hostname: "www.perplexity.ai", matchPatterns: ["https://www.perplexity.ai/*"] },
   { hostname: "chat.mistral.ai", matchPatterns: ["https://chat.mistral.ai/*"] },
   { hostname: "notebooklm.google.com", matchPatterns: ["https://notebooklm.google.com/*"] },

@@ -22,6 +22,7 @@
         "https://m365.cloud.microsoft/*",
         "https://chat.deepseek.com/*",
         "https://grok.com/*",
+        "https://x.com/i/grok*",
         "https://www.perplexity.ai/*",
         "https://chat.mistral.ai/*",
         "https://notebooklm.google.com/*",
@@ -57,6 +58,7 @@
     "https://github.com/copilot*",
     "https://github.com/spark*",
     "https://grok.com/*",
+    "https://x.com/*",
     "https://copilot.microsoft.com/*",
     "https://m365.cloud.microsoft/*",
     "https://cursor.com/*"
